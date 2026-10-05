@@ -1,0 +1,20 @@
+{
+  "name": "goryeo-jeonjang-ui-motion",
+  "version": "1.0.0",
+  "private": true,
+  "description": "고려전장 — one shape, twelve UI states, 28 beats at 120 BPM. Rendered from code.",
+  "type": "module",
+  "scripts": {
+    "music": "python3 audio/music.py audio/bed.wav",
+    "beats": "python3 audio/analyze.py audio/bed.wav audio/beats.json",
+    "cues": "node render.mjs --cues",
+    "mix": "python3 audio/mix.py audio/bed.wav audio/cues.json audio/soundtrack.wav && ffmpeg -y -loglevel error -i audio/soundtrack.wav -c:a aac -b:a 192k audio/soundtrack.m4a",
+    "audio": "npm run music && npm run beats && npm run cues && npm run mix",
+    "stills": "node render.mjs --stills",
+    "render": "npm run audio && node render.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.56.1",
+    "pretendard": "1.3.9"
+  }
+}

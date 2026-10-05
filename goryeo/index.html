@@ -1,0 +1,875 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1440">
+<title>고려전장 UI 모션</title>
+<style>
+@font-face{font-family:"Pretendard";src:url("fonts/PretendardVariable.woff2") format("woff2");font-weight:45 920;font-style:normal;font-display:block}
+:root{
+  --canvas:#E8E5DF; --ink:#121211; --paper:#FFFFFF; --yellow:#FFD21F;
+  --mute-d:rgba(255,255,255,.58); --mute-l:#8C877F; --hair:#ECE8E2; --tile:#F3F0EB;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--canvas)}
+body{font-family:"Pretendard",sans-serif;-webkit-font-smoothing:antialiased;color:var(--ink);overflow:hidden}
+#stage{position:relative;width:1440px;height:1440px;overflow:hidden;background:var(--canvas)}
+#world{position:absolute;left:0;top:0;width:0;height:0;transform-origin:0 0}
+#shape{position:absolute;overflow:hidden;transform-origin:50% 50%;
+  box-shadow:0 1px 2px rgba(30,24,14,.10),0 22px 48px -18px rgba(30,24,14,.34)}
+.abs{position:absolute}
+.layer{position:absolute;transform-origin:50% 50%}
+.num{font-feature-settings:"tnum" 1}
+svg{display:block;overflow:visible}
+.ic{fill:none;stroke-linecap:round;stroke-linejoin:round}
+.t-ko{letter-spacing:-.02em}
+.chipt{left:0;top:0;width:64px;height:30px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;letter-spacing:.04em}
+.stage-lbl{right:58px;top:1px;font-size:16px;font-weight:650;color:#fff;white-space:nowrap}
+.sl-label{left:80px;top:50%;transform:translateY(-50%);font-size:22px;font-weight:650;letter-spacing:-.02em;white-space:nowrap}
+.sl-val{right:34px;top:50%;transform:translateY(-50%);font-size:22px;font-weight:650;letter-spacing:-.01em}
+.tab{top:6px;width:151px;height:76px;display:flex;align-items:center;justify-content:center;font-size:21px;font-weight:650;letter-spacing:-.02em;white-space:nowrap}
+.xl{top:454px;font-size:15px;font-weight:500;color:var(--mute-l)}
+.row{left:8px;width:584px;height:60px}
+.row .tile{position:absolute;left:12px;top:12px;width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center}
+.row .lbl{position:absolute;left:62px;top:0;height:60px;display:flex;align-items:center;font-size:20px;font-weight:650;letter-spacing:-.02em;white-space:nowrap}
+.row .ret{position:absolute;right:18px;top:20px}
+.kc{position:absolute;width:96px;height:96px;border-radius:24px;background:#fff;display:flex;align-items:center;justify-content:center;
+  font-size:40px;font-weight:650;color:var(--ink)}
+#cursor{position:absolute;left:0;top:0;transform-origin:0 0;filter:drop-shadow(0 3px 5px rgba(20,16,10,.28))}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="world">
+    <div id="shape">
+      <div id="wipe" class="abs" style="background:#FFD21F"></div>
+      <div id="knob" class="abs"></div>
+
+      <!-- 0 · button -->
+      <div class="layer" id="L-btn" style="width:400px;height:96px">
+        <div class="abs t-ko" style="inset:0;display:flex;align-items:center;justify-content:center;gap:14px;color:#fff;font-size:28px;font-weight:650">
+          <span>고려전장에 문의하기</span><span id="btn-arrow" data-ic="arrow" data-s="28" data-c="#fff"></span>
+        </div>
+      </div>
+
+      <!-- 1 · loader -->
+      <div class="layer" id="L-spin" style="width:48px;height:48px">
+        <svg id="spin" width="48" height="48" viewBox="0 0 48 48">
+          <circle cx="24" cy="24" r="19" fill="none" stroke="rgba(255,255,255,.18)" stroke-width="4.5"/>
+          <circle cx="24" cy="24" r="19" fill="none" stroke="#fff" stroke-width="4.5" stroke-linecap="round" stroke-dasharray="34 120"/>
+        </svg>
+      </div>
+
+      <!-- 3 · dynamic island -->
+      <div class="layer" id="L-island" style="width:460px;height:88px">
+        <div class="abs" style="left:86px;top:0;height:88px;display:flex;flex-direction:column;justify-content:center">
+          <div class="t-ko" style="color:#fff;font-size:21px;font-weight:700;line-height:1.2">고려전장</div>
+          <div class="t-ko" style="color:var(--mute-d);font-size:15px;font-weight:500;line-height:1.3;margin-top:3px">전기기능장 출동 중</div>
+        </div>
+        <svg class="abs" style="right:28px;top:26px" width="80" height="36" viewBox="0 0 80 36"><path id="wave" class="ic" stroke="#FFD21F" stroke-width="2.5"/></svg>
+      </div>
+
+      <!-- 4 · panel card (player) -->
+      <div class="layer" id="L-card" style="width:520px;height:340px;color:#fff">
+        <div class="abs" style="left:98px;top:33px">
+          <div class="t-ko" style="font-size:21px;font-weight:700;line-height:1.2">메인 분전반</div>
+          <div class="t-ko" style="font-size:15px;font-weight:500;color:var(--mute-d);margin-top:5px">고려전장 · 시공 현장</div>
+        </div>
+        <div id="chip" class="abs" style="right:32px;top:38px;width:64px;height:30px;border-radius:15px">
+          <span id="chip-off" class="abs chipt" style="color:rgba(255,255,255,.72)">OFF</span>
+          <span id="chip-on" class="abs chipt" style="color:#121211">ON</span>
+        </div>
+        <div id="pwr" class="abs" style="left:32px;top:120px;width:88px;height:88px;border-radius:44px">
+          <svg class="abs" style="left:22px;top:22px" width="44" height="44" viewBox="0 0 24 24">
+            <path id="pwr-arc" class="ic" stroke="#121211"/><path id="pwr-line" class="ic" stroke="#121211"/>
+          </svg>
+        </div>
+        <div class="abs" style="left:146px;top:124px">
+          <div class="t-ko" style="font-size:15px;font-weight:500;color:var(--mute-d)">전압</div>
+          <div style="display:flex;align-items:baseline;gap:6px;margin-top:3px">
+            <span id="volt" class="num" style="font-size:60px;font-weight:700;letter-spacing:-.03em;line-height:1">0</span>
+            <span style="font-size:26px;font-weight:600;color:var(--mute-d)">V</span>
+          </div>
+        </div>
+        <div class="abs" style="left:32px;width:456px;top:240px;height:24px">
+          <span class="abs t-ko" style="left:0;top:1px;font-size:15px;font-weight:500;color:var(--mute-d)">공정 진행</span>
+          <span class="abs stage-lbl t-ko" data-stage="0">착공</span>
+          <span class="abs stage-lbl t-ko" data-stage="1">배선</span>
+          <span class="abs stage-lbl t-ko" data-stage="2">결선</span>
+          <span class="abs stage-lbl t-ko" data-stage="3">검사</span>
+          <span class="abs stage-lbl t-ko" data-stage="4">준공</span>
+          <span id="pct" class="abs num" style="right:0;top:1px;width:56px;text-align:right;font-size:16px;font-weight:650">40%</span>
+        </div>
+        <div class="abs" style="left:32px;top:284px;width:456px;height:8px;border-radius:4px;background:rgba(255,255,255,.16)">
+          <div id="fill" class="abs" style="left:0;top:0;height:8px;border-radius:4px"></div>
+          <div id="handle" class="abs" style="top:-9px;width:26px;height:26px;border-radius:13px;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.35)"></div>
+        </div>
+      </div>
+
+      <!-- 6 · brightness slider -->
+      <div class="layer" id="L-slider">
+        <div id="sl-fill" class="abs" style="left:0;top:0;background:#121211"></div>
+        <div id="sl-d" class="abs" style="inset:0;color:#121211">
+          <span class="abs sl-label">LED 조명</span><span class="abs sl-val num">60%</span>
+        </div>
+        <div id="sl-l" class="abs" style="inset:0;color:#fff">
+          <svg class="abs" id="bulb" style="left:31px;top:50%;margin-top:-15px" width="30" height="30" viewBox="0 0 24 24">
+            <path id="bulb-glass" d="M12 2.5a6.5 6.5 0 0 0-4 11.6c.6.5 1 1.2 1 2V16h6v-.9c0-.8.4-1.5 1-2A6.5 6.5 0 0 0 12 2.5Z" fill="#FFD21F" fill-opacity="0" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/>
+            <path class="ic" d="M9.2 18.8h5.6M10.4 21.6h3.2" stroke="#fff" stroke-width="1.8"/>
+          </svg>
+          <span class="abs sl-label">LED 조명</span><span class="abs sl-val num">60%</span>
+        </div>
+      </div>
+
+      <!-- 7 · breaker toggle -->
+      <div class="layer" id="L-toggle" style="width:320px;height:104px;font-size:22px;font-weight:650">
+        <div id="tg-off" class="abs t-ko" style="left:104px;right:10px;top:0;bottom:0;display:flex;align-items:center;justify-content:center;color:#fff">누전차단기</div>
+        <div id="tg-on" class="abs t-ko" style="left:10px;right:104px;top:0;bottom:0;display:flex;align-items:center;justify-content:center;color:#121211">보호 중</div>
+      </div>
+
+      <!-- 8 · service tabs -->
+      <div class="layer" id="L-tabs" style="width:616px;height:88px">
+        <div id="tabs-d" class="abs" style="inset:0;color:#77726B"></div>
+        <div id="tabs-l" class="abs" style="inset:0;color:#fff"></div>
+      </div>
+
+      <!-- 9 · chart -->
+      <div class="layer" id="L-chart" style="width:616px;height:500px">
+        <div class="abs t-ko" style="left:32px;top:110px;font-size:15px;font-weight:600;color:var(--mute-l)">부하 측정 · 분전반 A</div>
+        <div class="abs" style="left:32px;top:136px;display:flex;align-items:baseline;gap:6px">
+          <span id="ch-val" class="num" style="font-size:50px;font-weight:700;letter-spacing:-.03em;line-height:1">0.0</span>
+          <span style="font-size:22px;font-weight:650;color:var(--mute-l)">A</span>
+        </div>
+        <div class="abs t-ko" style="right:32px;top:112px;display:flex;align-items:center;gap:8px;font-size:15px;font-weight:600;color:var(--mute-l)">
+          <span style="width:12px;height:12px;border-radius:6px;background:var(--yellow);box-shadow:inset 0 0 0 2.5px #121211"></span>피크
+        </div>
+        <svg id="ch-svg" class="abs" style="left:0;top:0" width="616" height="500" viewBox="0 0 616 500">
+          <defs><clipPath id="ch-clip"><rect id="ch-cliprect" x="0" y="0" width="0" height="500"/></clipPath></defs>
+          <g id="ch-grid" stroke="#EEEAE4" stroke-width="1.5"></g>
+          <path id="ch-area" fill="rgba(18,18,17,.045)" clip-path="url(#ch-clip)"/>
+          <path id="ch-line" class="ic" stroke="#121211" stroke-width="3.5" clip-path="url(#ch-clip)"/>
+          <line id="hv-line" stroke="#121211" stroke-opacity=".22" stroke-width="1.5"/>
+          <circle id="ch-pen" r="5.5" fill="#121211"/>
+          <circle id="hv-dot" r="7" fill="#fff" stroke="#121211" stroke-width="3"/>
+          <circle id="ch-peak" r="8" fill="#FFD21F" stroke="#121211" stroke-width="3"/>
+        </svg>
+        <span class="abs xl" style="left:32px">0시</span>
+        <span class="abs xl" style="left:170px;transform:translateX(-50%)">6시</span>
+        <span class="abs xl" style="left:308px;transform:translateX(-50%)">12시</span>
+        <span class="abs xl" style="left:446px;transform:translateX(-50%)">18시</span>
+        <span class="abs xl" style="right:32px">24시</span>
+        <div id="tip" class="abs num" style="left:0;top:0;background:#121211;color:#fff;border-radius:12px;padding:9px 13px;font-size:15px;font-weight:650;white-space:nowrap"></div>
+      </div>
+
+      <!-- 10 · command palette -->
+      <div class="layer" id="L-pal" style="width:600px;height:393px">
+        <span class="abs" style="left:26px;top:26px" data-ic="search" data-s="24" data-c="#8C877F"></span>
+        <div class="abs" style="left:64px;top:0;height:76px;display:flex;align-items:center;font-size:21px;letter-spacing:-.01em">
+          <span id="q-ph" class="abs t-ko" style="left:4px;color:var(--mute-l);font-weight:500;white-space:nowrap">무엇을 도와드릴까요?</span>
+          <span id="q-tx" style="font-weight:600;color:#121211;white-space:pre"></span><span id="caret" style="display:inline-block;width:2.5px;height:26px;background:#121211;margin-left:2px;border-radius:1px"></span>
+        </div>
+        <div class="abs" style="right:22px;top:24px;height:28px;padding:0 9px;border-radius:8px;background:var(--tile);display:flex;align-items:center;gap:3px;font-size:15px;font-weight:650;color:#5E5A54">
+          <span data-ic="cmd" data-s="14" data-c="#5E5A54"></span>K
+        </div>
+        <div class="abs" style="left:0;right:0;top:76px;height:1px;background:var(--hair)"></div>
+        <div id="rows-d" class="abs" style="inset:0"></div>
+        <div id="rows-l" class="abs" style="inset:0"></div>
+      </div>
+
+      <!-- 11 · toast -->
+      <div class="layer" id="L-toast" style="width:580px;height:104px;color:#fff">
+        <svg class="abs" style="left:38px;top:38px" width="28" height="28" viewBox="0 0 24 24">
+          <path id="t-check" class="ic" d="M5 12.5l4.5 4.5L19.5 7" stroke="#121211" stroke-width="2.6"/>
+        </svg>
+        <div class="abs" style="left:100px;top:0;height:104px;display:flex;flex-direction:column;justify-content:center">
+          <div class="t-ko" style="font-size:20px;font-weight:700;line-height:1.25">누전 점검 접수 완료</div>
+          <div style="position:relative;height:22px;margin-top:5px;width:380px">
+            <span id="t-sub1" class="abs t-ko" style="left:0;top:0;font-size:15px;font-weight:500;color:var(--mute-d);white-space:nowrap">고려전장 전기기능장이 곧 연락드립니다</span>
+            <span id="t-sub2" class="abs t-ko" style="left:0;top:0;font-size:15px;font-weight:500;color:var(--mute-d);white-space:nowrap">고려전장 · 전기기능장 직접 시공</span>
+          </div>
+        </div>
+        <svg class="abs" style="right:30px;top:38px" width="28" height="28" viewBox="0 0 28 28">
+          <circle cx="14" cy="14" r="11" stroke="rgba(255,255,255,.18)" stroke-width="2.5" fill="none"/>
+          <circle id="t-arc" cx="14" cy="14" r="11" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round" transform="rotate(-90 14 14)"/>
+        </svg>
+      </div>
+
+      <div id="puck" class="abs" style="background:#FFD21F;border-radius:50%">
+        <svg id="pk-check" class="abs" viewBox="0 0 24 24"><path id="pk-check-p" class="ic" d="M5 12.5l4.5 4.5L19.5 7" stroke="#121211" stroke-width="2.2"/></svg>
+        <svg id="pk-bolt" class="abs" viewBox="0 0 24 24"><path class="ic" d="M13.5 2 4.5 13.5H11L10.5 22 19.5 10.5H13Z" stroke="#121211" stroke-width="2.2"/></svg>
+      </div>
+    </div>
+  </div>
+
+  <div id="kc-cmd" class="kc"><span data-ic="cmd" data-s="38" data-c="#121211" data-w="3"></span></div>
+  <div id="kc-k" class="kc">K</div>
+  <div id="kc-x" class="kc">
+    <span id="kc-down" class="abs" data-ic="down" data-s="40" data-c="#121211" data-w="3"></span>
+    <span id="kc-enter" class="abs" data-ic="enter" data-s="40" data-c="#121211" data-w="3"></span>
+  </div>
+
+  <svg id="cursor" width="46" height="60" viewBox="0 0 34 44">
+    <path d="M4 3 L4 33.5 L11.6 26.2 L16.8 38.4 L22.2 36.1 L17.1 24.3 L27.6 24.3 Z" fill="#121211" stroke="#fff" stroke-width="2.4" stroke-linejoin="round"/>
+  </svg>
+</div>
+
+<script>
+'use strict';
+/* ---------------------------------------------------------------------------
+   고려전장 — one shape, twelve states, 28 beats at 120 BPM.
+
+   Everything on screen is a pure function of time: seek(t) recomputes every
+   style from scratch. Springs are closed-form step responses; a value whose
+   target changes many times is the sum of one spring per change, evaluated on
+   a periodic timeline so the last frame flows into the first.
+--------------------------------------------------------------------------- */
+
+const BEATS = 28;
+let BEAT = 0.5, T = BEATS * BEAT, OFFSET = 0;          // re-set by build() from the beat analysis
+const bt = (b) => OFFSET + b * BEAT;                    // beat → seconds
+
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const clamp01 = (x) => clamp(x, 0, 1);
+const lerp = (a, b, t) => a + (b - a) * t;
+const mod = (x, m) => ((x % m) + m) % m;
+const easeOut3 = (p) => 1 - Math.pow(1 - p, 3);
+const easeInOut3 = (p) => (p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2);
+const smooth = (p) => p * p * (3 - 2 * p);
+
+const INK = [18, 18, 17], PAPER = [255, 255, 255], YEL = [255, 210, 31], OFFW = [246, 244, 240];
+const MUTE_L = [140, 135, 127], CHIP_OFF = [47, 47, 46];
+const rgb = (c, a) => {
+  const r = Math.round(clamp(c[0], 0, 255)), g = Math.round(clamp(c[1], 0, 255)), b = Math.round(clamp(c[2], 0, 255));
+  return a === undefined ? `rgb(${r},${g},${b})` : `rgba(${r},${g},${b},${a})`;
+};
+
+/* ---- springs ------------------------------------------------------------ */
+// Unit step response of a damped spring (zeta < 1: a hint of overshoot).
+function S(tau, w, z) {
+  if (tau <= 0) return 0;
+  if (z >= 1) { const e = Math.exp(-w * tau); return 1 - e * (1 + w * tau); }
+  const wd = w * Math.sqrt(1 - z * z), e = Math.exp(-z * w * tau);
+  return 1 - e * (Math.cos(wd * tau) + (z * w / wd) * Math.sin(wd * tau));
+}
+// Free response from displacement x0 and velocity v0 (used when a drag lets go).
+function release(tau, x0, v0, w, z) {
+  const wd = w * Math.sqrt(1 - z * z), e = Math.exp(-z * w * tau);
+  return e * (x0 * Math.cos(wd * tau) + ((v0 + z * w * x0) / wd) * Math.sin(wd * tau));
+}
+
+// Periodic sum of springs. keys: [{b, v, w?, z?}]; v is a number.
+// f(t) = last + Σ Δk·[S(t−tk) + S(t−tk+T) − 1]  — the second term is the
+// previous loop's unfinished tail, so f(T) === f(0) in value and velocity.
+class Track {
+  constructor(keys, w = 18, z = 0.82) {
+    const k = keys.map((o, i) => ({ t: mod(bt(o.b), T), v: o.v, w: o.w ?? w, z: o.z ?? z, i }));
+    k.sort((a, b) => a.t - b.t || a.i - b.i);
+    this.last = k[k.length - 1].v;
+    let prev = this.last;
+    for (const o of k) { o.d = o.v - prev; prev = o.v; }
+    this.k = k.filter((o) => o.d !== 0);
+  }
+  at(t) {
+    let v = this.last;
+    for (const o of this.k) { const tau = t - o.t; v += o.d * (S(tau, o.w, o.z) + S(tau + T, o.w, o.z) - 1); }
+    return v;
+  }
+}
+// Several numbers springing together (colors, rects).
+class VTrack {
+  constructor(keys, w, z) { this.n = keys[0].v.length; this.c = Array.from({ length: this.n }, (_, j) => new Track(keys.map((o) => ({ ...o, v: o.v[j] })), w, z)); }
+  at(t) { return this.c.map((c) => c.at(t)); }
+}
+
+/* ---- content enter / exit ---------------------------------------------- */
+// Visibility window [bin, bout] in beats, wrapping across the loop point.
+function env(t, bin, bout, o = {}) {
+  const di = o.di ?? 0.08, du = o.du ?? 0.24, dx = o.dx ?? 0.12;
+  const tin = mod(bt(bin), T), tout = tin + mod(bt(bout) - bt(bin), T);
+  let best = { a: 0, e: 0, x: 1 };
+  for (const k of [0, -1, 1]) {
+    const tt = t + k * T;
+    const e = easeOut3(clamp01((tt - tin - di) / du));
+    const x = smooth(clamp01((tt - tout) / dx));
+    const a = e * (1 - x);
+    if (a > best.a) best = { a, e, x };
+  }
+  return best;
+}
+function show(el, e, o = {}) {
+  if (e.a <= 0.002) { el.style.visibility = 'hidden'; return false; }
+  const B = o.blur ?? 7, blur = (1 - e.e) * B + e.x * B;
+  const s = lerp(o.sIn ?? 0.96, 1, e.e) * lerp(1, o.sOut ?? 0.98, e.x);
+  const dy = (1 - e.e) * (o.dy ?? 0) - e.x * (o.dyOut ?? 0);
+  el.style.visibility = 'inherit';
+  el.style.opacity = e.a.toFixed(4);
+  el.style.filter = blur > 0.05 ? `blur(${blur.toFixed(2)}px)` : 'none';
+  el.style.transform = `${o.base ?? ''} translateY(${dy.toFixed(2)}px) scale(${s.toFixed(4)})`;
+  return true;
+}
+
+/* ---- icons: one stroke weight everywhere ------------------------------- */
+const ICONS = {
+  arrow: 'M4 12h16M14 6l6 6-6 6',
+  search: 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14ZM20.5 20.5l-4.6-4.6',
+  cmd: 'M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3',
+  down: 'M12 4v16M6 14l6 6 6-6',
+  enter: 'M20 4v7a4 4 0 0 1-4 4H4M9 10l-5 5 5 5',
+  panel: 'M6 3h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2ZM8.5 7.5v3M12 7.5v3M15.5 7.5v3M8 16h8',
+  switch: 'M8 6h8a6 6 0 0 1 0 12H8A6 6 0 0 1 8 6ZM16 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Z',
+  bulb: 'M9.2 18.8h5.6M10.4 21.6h3.2M12 2.5a6.5 6.5 0 0 0-4 11.6c.6.5 1 1.2 1 2V16h6v-.9c0-.8.4-1.5 1-2A6.5 6.5 0 0 0 12 2.5Z',
+  pulse: 'M3 12h4l3-7 4 14 3-7h4',
+  plug: 'M9 2.5v4.5M15 2.5v4.5M6 7h12v4a6 6 0 0 1-12 0V7ZM12 17v4.5',
+};
+const STROKE = 2.25;   // world px, shared by every small icon
+function icon(name, size, color, sw = STROKE) {
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" class="ic" stroke="${color}" stroke-width="${(sw * 24 / size).toFixed(3)}"><path d="${ICONS[name]}"/></svg>`;
+}
+
+/* ---- data --------------------------------------------------------------- */
+const TABS = ['수배전반', '전기공사', '조명', '안전점검'];
+const ROWS = [
+  { pre: '', m: '', rest: '분전반 교체', icon: 'panel' },
+  { pre: '', m: '누전', rest: '차단기 교체', icon: 'switch' },
+  { pre: '', m: '', rest: 'LED 조명 시공', icon: 'bulb' },
+  { pre: '', m: '누전', rest: ' 점검', icon: 'pulse' },
+  { pre: '', m: '', rest: '콘센트 증설', icon: 'plug' },
+];
+const TYPED = [[21, 'ㄴ'], [21.25, '누'], [21.5, '눚'], [21.75, '누저'], [22, '누전']];
+// Load profile of one panel over a day (amps), purely illustrative.
+const LOAD = [9.2, 8.6, 8.1, 7.9, 8.0, 8.8, 11.5, 15.8, 20.4, 24.1, 26.8, 28.9, 27.2, 30.6, 32.4, 31.1, 29.3, 26.0, 22.7, 20.5, 18.2, 15.4, 12.8, 10.6, 9.2];
+const STAGES = [0, 0.25, 0.5, 0.75, 1];   // 착공 배선 결선 검사 준공
+
+// Monotone cubic (Fritsch–Carlson) so the curve never overshoots the data.
+const LT = (() => {
+  const n = LOAD.length, d = [], m = [];
+  for (let i = 0; i < n - 1; i++) d.push(LOAD[i + 1] - LOAD[i]);
+  m[0] = d[0]; m[n - 1] = d[n - 2];
+  for (let i = 1; i < n - 1; i++) m[i] = d[i - 1] * d[i] <= 0 ? 0 : (d[i - 1] + d[i]) / 2;
+  for (let i = 0; i < n - 1; i++) {
+    if (d[i] === 0) { m[i] = m[i + 1] = 0; continue; }
+    const a = m[i] / d[i], b = m[i + 1] / d[i], s = a * a + b * b;
+    if (s > 9) { const k = 3 / Math.sqrt(s); m[i] = k * a * d[i]; m[i + 1] = k * b * d[i]; }
+  }
+  return m;
+})();
+function loadAt(h) {
+  h = clamp(h, 0, 24); const i = Math.min(23, Math.floor(h)), u = h - i;
+  const h00 = 2 * u ** 3 - 3 * u ** 2 + 1, h10 = u ** 3 - 2 * u ** 2 + u, h01 = -2 * u ** 3 + 3 * u ** 2, h11 = u ** 3 - u ** 2;
+  return h00 * LOAD[i] + h10 * LT[i] + h01 * LOAD[i + 1] + h11 * LT[i + 1];
+}
+// chart layer coords (616 × 500, top-left at world (−308, 200))
+const PX = (h) => 32 + (h / 24) * 552, PY = (v) => 440 - (v / 36) * 208;
+const hx = (h) => -308 + PX(h);
+
+/* ---- elements ----------------------------------------------------------- */
+const $ = (id) => document.getElementById(id);
+let E = {};
+function buildDom() {
+  for (const el of document.querySelectorAll('[data-ic]')) el.innerHTML = icon(el.dataset.ic, +el.dataset.s, el.dataset.c, el.dataset.w ? +el.dataset.w : STROKE);
+  const tabs = (color) => TABS.map((s, i) => `<span class="abs tab t-ko" style="left:${6 + 151 * i}px">${s}</span>`).join('');
+  $('tabs-d').innerHTML = tabs(); $('tabs-l').innerHTML = tabs();
+  const row = (r, inv) => `<div class="abs row">
+      <div class="tile" style="background:${inv ? 'rgba(255,255,255,.14)' : 'var(--tile)'}">${icon(r.icon, 20, inv ? 'currentColor' : '#121211')}</div>
+      <div class="lbl t-ko" style="color:${inv ? 'currentColor' : '#121211'}"><span><span class="m">${r.m}</span><span class="r">${r.rest}</span></span></div>
+      ${inv ? `<span class="ret">${icon('enter', 20, 'currentColor')}</span>` : ''}</div>`;
+  $('rows-d').innerHTML = ROWS.map((r) => row(r, false)).join('');
+  $('rows-l').innerHTML = ROWS.map((r) => row(r, true)).join('');
+  const g = $('ch-grid');
+  for (let i = 0; i < 4; i++) { const y = 232 + i * (208 / 3); g.insertAdjacentHTML('beforeend', `<line x1="32" x2="584" y1="${y}" y2="${y}"/>`); }
+  // chart line + area paths
+  let d = '';
+  for (let i = 0; i <= 480; i++) { const h = (i / 480) * 24; d += `${i ? 'L' : 'M'}${PX(h).toFixed(2)} ${PY(loadAt(h)).toFixed(2)}`; }
+  $('ch-line').setAttribute('d', d);
+  $('ch-area').setAttribute('d', `${d}L584 440L32 440Z`);
+  $('ch-peak').setAttribute('cx', PX(14)); $('ch-peak').setAttribute('cy', PY(LOAD[14]));
+  $('hv-line').setAttribute('y1', 232); $('hv-line').setAttribute('y2', 440);
+  $('t-arc').setAttribute('stroke-dasharray', `${2 * Math.PI * 11} 999`);
+
+  E = {
+    world: $('world'), shape: $('shape'), knob: $('knob'), wipe: $('wipe'), puck: $('puck'),
+    Lbtn: $('L-btn'), btnArrow: $('btn-arrow'), Lspin: $('L-spin'), spin: $('spin'),
+    Lisl: $('L-island'), wave: $('wave'),
+    Lcard: $('L-card'), chip: $('chip'), chipOff: $('chip-off'), chipOn: $('chip-on'), pwr: $('pwr'),
+    pwrArc: $('pwr-arc'), pwrLine: $('pwr-line'), volt: $('volt'), stages: [...document.querySelectorAll('[data-stage]')],
+    pct: $('pct'), fill: $('fill'), handle: $('handle'),
+    Lsl: $('L-slider'), slFill: $('sl-fill'), slD: $('sl-d'), slL: $('sl-l'), slVals: [...document.querySelectorAll('.sl-val')], bulbGlass: $('bulb-glass'),
+    Ltg: $('L-toggle'), tgOff: $('tg-off'), tgOn: $('tg-on'),
+    Ltabs: $('L-tabs'), tabsL: $('tabs-l'), tabD: [...$('tabs-d').children], tabL: [...$('tabs-l').children],
+    Lch: $('L-chart'), chVal: $('ch-val'), clip: $('ch-cliprect'), pen: $('ch-pen'), peak: $('ch-peak'),
+    hvLine: $('hv-line'), hvDot: $('hv-dot'), tip: $('tip'),
+    Lpal: $('L-pal'), qPh: $('q-ph'), qTx: $('q-tx'), caret: $('caret'), rowsL: $('rows-l'),
+    rowD: [...$('rows-d').children], rowL: [...$('rows-l').children],
+    Ltoast: $('L-toast'), tCheck: $('t-check'), tSub1: $('t-sub1'), tSub2: $('t-sub2'), tArc: $('t-arc'),
+    pkCheck: $('pk-check'), pkCheckP: $('pk-check-p'), pkBolt: $('pk-bolt'),
+    kcCmd: $('kc-cmd'), kcK: $('kc-k'), kcX: $('kc-x'), kcDown: $('kc-down'), kcEnter: $('kc-enter'),
+    cursor: $('cursor'),
+  };
+  E.rRest = E.rowD.map((r) => r.querySelector('.r'));
+  E.checkLen = E.pkCheckP.getTotalLength();
+  for (const p of [E.pkCheckP, E.tCheck]) p.setAttribute('stroke-dasharray', `${E.checkLen} ${E.checkLen}`);
+}
+
+/* ---- power ⏻ → ⚡ morph: both icons resampled to the same point count ---- */
+const MORPH_N = 64;
+const ARC_PTS = (() => {
+  const a0 = -Math.PI / 4, a1 = Math.PI * 1.25, pts = [];
+  for (let i = 0; i < MORPH_N; i++) { const a = lerp(a0, a1, i / (MORPH_N - 1)); pts.push([12 + 9 * Math.cos(a), 13 + 9 * Math.sin(a)]); }
+  return pts;
+})();
+const BOLT_PTS = (() => {
+  const V = [[13.5, 2], [13, 10.5], [19.5, 10.5], [10.5, 22], [11, 13.5], [4.5, 13.5], [13.5, 2]];
+  const L = []; let tot = 0;
+  for (let i = 0; i < V.length - 1; i++) { const l = Math.hypot(V[i + 1][0] - V[i][0], V[i + 1][1] - V[i][1]); L.push(l); tot += l; }
+  const pts = []; const segs = MORPH_N - 1; let used = 0;
+  const counts = L.map((l, i) => { const c = i < L.length - 1 ? Math.max(1, Math.round((l / tot) * segs)) : 0; used += c; return c; });
+  counts[counts.length - 1] = segs - used;
+  for (let i = 0; i < L.length; i++) for (let j = 0; j < counts[i]; j++) {
+    const u = j / counts[i]; pts.push([lerp(V[i][0], V[i + 1][0], u), lerp(V[i][1], V[i + 1][1], u)]);
+  }
+  pts.push(V[V.length - 1]);
+  return pts;
+})();
+
+/* ---- timeline ----------------------------------------------------------- */
+let G, CAM, PK, KN, CUR, A, X, CUES, SCRUB_X, SLIDE_X, HOVER, T_MAX;
+
+function build(opts = {}) {
+  if (opts.T) T = opts.T;
+  BEAT = T / BEATS;
+  OFFSET = opts.offset ?? 0;
+
+  // Shape: one element, every state is a target for its geometry.
+  const ST = [
+    { b: 1,  cx: 0, cy: 0,     w: 96,  h: 96,  r: 48, cam: 3.0 },   // loader
+    { b: 3,  cx: 0, cy: 0,     w: 460, h: 88,  r: 44, cam: 2.25 },  // dynamic island
+    { b: 4,  cx: 0, cy: 126,   w: 520, h: 340, r: 44, cam: 1.95 },  // panel card (grows down from the island)
+    { b: 8,  cx: 0, cy: 244,   w: 560, h: 96,  r: 48, cam: 1.85 },  // slider (where the progress bar was)
+    { b: 11, cx: 0, cy: 244,   w: 320, h: 104, r: 52, cam: 2.6 },   // toggle
+    { b: 13, cx: 0, cy: 244,   w: 616, h: 88,  r: 44, cam: 1.72 },  // tabs
+    { b: 17, cx: 0, cy: 450,   w: 616, h: 500, r: 44, cam: 1.62 },  // chart (tabs open downward; r nests the indicator)
+    { b: 20, cx: 0, cy: 396.5, w: 600, h: 393, r: 32, cam: 1.7 },   // ⌘K palette
+    { b: 22, cx: 0, cy: 306.5, w: 600, h: 213, r: 32, cam: 1.85 },  // palette filtered
+    { b: 25, cx: 0, cy: 252,   w: 580, h: 104, r: 52, cam: 1.85 },  // toast
+    { b: 27, cx: 0, cy: 0,     w: 400, h: 96,  r: 48, cam: 2.45 },  // button
+  ];
+  const k = (f, w, z) => new Track(ST.map((s) => ({ b: s.b, v: s[f] })), w, z);
+  G = {
+    cx: k('cx', 18, 0.8), w: k('w', 18, 0.8),           // horizontal a touch quicker than vertical
+    cy: k('cy', 15, 0.82), h: k('h', 15, 0.82),         // same spring → top edge stays put when anchored
+    r: k('r', 18, 1),
+    // colour changes hide under content where they can (puck, full slider fill, toggle wipe), the rest are quick
+    bg: new VTrack([{ b: 2.6, v: YEL }, { b: 2.85, v: INK }, { b: 8, v: PAPER }, { b: 10.6, v: INK }, { b: 12.7, v: YEL }, { b: 13, v: PAPER }, { b: 25, v: INK }], 34, 1),
+    press: new Track([...pressKeys([0, 4], 0.965)], 38, 0.9),
+  };
+  CAM = {
+    x: new Track(ST.map((s) => ({ b: s.b + 0.06, v: s.cx })), 8.5, 1),
+    y: new Track(ST.map((s) => ({ b: s.b + 0.06, v: s.cy })), 8.5, 1),
+    s: new Track(ST.map((s) => ({ b: s.b + 0.06, v: s.cam })), 8.5, 1),
+  };
+
+  // The yellow puck: check → island avatar → card avatar.
+  PK = {
+    x: new Track([{ b: 0.5, v: 0 }, { b: 3, v: -186 }, { b: 4, v: -202 }]),
+    y: new Track([{ b: 0.5, v: 0 }, { b: 3, v: 0 }, { b: 4, v: 14 }]),
+    s: new Track([{ b: 2, v: 96 }, { b: 3, v: 56 }, { b: 4, v: 52 }, { b: 8, v: 0 }], 18, 0.8),
+  };
+
+  // The knob: toggle knob → liquid tab indicator → palette highlight → toast icon.
+  // Its two edges ride different springs: the edge in the direction of travel leads.
+  const KK = [
+    { b: 5,     L: -150, R: -66,  T: 202, B: 286, r: 42, c: OFFW },   // parked, hidden
+    { b: 12,    L: 66,   R: 150,  T: 202, B: 286, r: 42, c: INK },    // ON
+    { b: 13,    L: -302, R: -151, T: 206, B: 282, r: 38, c: INK },    // tab 1
+    { b: 14,    L: -151, R: 0,    T: 206, B: 282, r: 38, c: INK },
+    { b: 15,    L: 0,    R: 151,  T: 206, B: 282, r: 38, c: INK },
+    { b: 16,    L: 151,  R: 302,  T: 206, B: 282, r: 38, c: INK },
+    { b: 20,    L: -292, R: 292,  T: 285, B: 345, r: 16, c: INK },    // palette row 0
+    { b: 23,    L: -292, R: 292,  T: 345, B: 405, r: 16, c: INK },    // ↓ row 1
+    { b: 23.86, L: -289, R: 289,  T: 348, B: 402, r: 16, c: INK },    // ⏎ pressed
+    { b: 24.06, L: -292, R: 292,  T: 345, B: 405, r: 16, c: YEL },
+    { b: 25,    L: -268, R: -208, T: 222, B: 282, r: 30, c: YEL },    // toast icon
+  ];
+  const edge = (f, sign) => new Track(KK.map((o, i) => {
+    const prev = KK[(i + KK.length - 1) % KK.length][f], lead = Math.sign(o[f] - prev) === sign;
+    return { b: o.b, v: o[f], w: lead ? 26 : 13.5, z: 0.84 };
+  }));
+  KN = {
+    L: edge('L', -1), R: edge('R', 1), T: edge('T', -1), B: edge('B', 1),
+    r: new Track(KK.map((o) => ({ b: o.b, v: o.r })), 18, 1),
+    c: new VTrack(KK.map((o) => ({ b: o.b, v: o.c })), 40, 1),
+  };
+
+  // Cursor: world coordinates, critically damped; x a little quicker than y so paths arc.
+  const CK = [
+    { b: 0.3,   x: 150,    y: 120 },
+    { b: 3.2,   x: 40,     y: 16 },                   // island
+    { b: 4.15,  x: -166,   y: 138 },                  // power button
+    { b: 5.15,  x: -45.6,  y: 246 },                  // progress handle
+    { b: 6.0,   x: 272,    y: 250, w: 9 },            // scrub to the end
+    { b: 7.25,  x: 56,     y: 246 },                  // slider fill edge
+    { b: 8.5,   x: 286,    y: 248, w: 12 },           // drag to max…
+    { b: 9.0,   x: 446,    y: 252, w: 7 },            // …and past it
+    { b: 10.6,  x: -104,   y: 246 },                  // toggle knob
+    { b: 13.2,  x: -66,    y: 259 },                  // tab 2
+    { b: 14.2,  x: 85,     y: 259 },                  // tab 3
+    { b: 15.2,  x: 236,    y: 259 },                  // tab 4
+    { b: 16.3,  x: 340,    y: 400 },
+    { b: 17.9,  x: hx(8),  y: 570 },                  // into the chart
+    { b: 18.5,  x: hx(14), y: 570, w: 10 },           // hover to the peak
+    { b: 20.1,  x: 330,    y: 340 },
+    { b: 25.4,  x: 210,    y: 385 },
+    { b: 26.9,  x: 146,    y: 26 },                   // back to the button
+  ];
+  CUR = {
+    x: new Track(CK.map((o) => ({ b: o.b, v: o.x, w: o.w ?? 16 })), 16, 1),
+    y: new Track(CK.map((o) => ({ b: o.b, v: o.y, w: (o.w ?? 16) * 0.86 })), 14, 1),
+    press: new Track([...clickKeys([0, 4, 5, 12, 14, 15, 16]),
+      { b: 6 - 0.1, v: 1 }, { b: 7, v: 0 }, { b: 8.5 - 0.1, v: 1 }, { b: 10, v: 0 }], 40, 0.9),
+  };
+
+  // Smaller pieces.
+  A = {
+    arrow: new Track([{ b: 27.7, v: 4 }, { b: 0.1, v: 0 }], 20, 0.8),
+    pwrP: new Track([{ b: 5, v: 1 }, { b: 9.5, v: 0 }], 16, 0.8),
+    pwrBg: new VTrack([{ b: 5, v: YEL }, { b: 9.5, v: PAPER }], 22, 1),
+    pwrPress: new Track(pressKeys([5], 0.92), 38, 0.85),
+    volt: new Track([{ b: 5, v: 220 }, { b: 9.5, v: 0 }], 7, 1),
+    chipBg: new VTrack([{ b: 5, v: YEL }, { b: 9.5, v: CHIP_OFF }], 22, 1),
+    grab: new Track([{ b: 6 - 0.1, v: 1.28 }, { b: 7, v: 1 }], 26, 0.8),
+    peak: new Track([{ b: 18, v: 1 }, { b: 21, v: 0 }], 20, 0.78),
+    tabPress: [14, 15, 16].map((b) => new Track(pressKeys([b], 0.94), 38, 0.85)),
+    rowSlot: ROWS.map((_, i) => new Track([{ b: 20, v: i }, { b: 22, v: i === 1 ? 0 : i === 3 ? 1 : i }])),
+    rest: new VTrack([{ b: 22, v: MUTE_L }, { b: 26, v: INK }], 24, 1),
+    inv: new VTrack([{ b: 24.06, v: INK }, { b: 26, v: PAPER }], 24, 1),
+    kcCmd: new Track([{ b: 19.8, v: 1 }, { b: 20.15, v: 0 }], 45, 0.9),
+    kcK: new Track([{ b: 20 - 0.12, v: 1 }, { b: 20.1, v: 0 }], 45, 0.9),
+    kcX: new Track([{ b: 23 - 0.12, v: 1 }, { b: 23.08, v: 0 }, { b: 24 - 0.12, v: 1 }, { b: 24.08, v: 0 }], 45, 0.9),
+  };
+
+  // Direct manipulation: sample the (pure) cursor once to find crossings.
+  const cx = (t) => CUR.x.at(t);
+  const g1 = bt(6), r1 = bt(7), x1 = cx(g1);
+  SCRUB_X = { g: g1, r: r1, x0: x1 };
+  const g2 = bt(8.5), r2 = bt(10), x2 = cx(g2);
+  SLIDE_X = { g: g2, r: r2, x0: x2 };
+  const s2 = slideRaw(r2), s2b = slideRaw(r2 - 1e-3);
+  SLIDE_X.s0 = rubber(s2); SLIDE_X.v0 = (rubber(s2) - rubber(s2b)) / 1e-3;
+
+  const crossings = [];
+  let prevStage = stageOf(scrubV(g1));
+  for (let t = g1; t <= r1; t += 0.001) { const s = stageOf(scrubV(t)); if (s !== prevStage) { crossings.push({ t, s }); prevStage = s; } }
+  X = { stageWin: [] };
+  // stage label windows (seconds); stage 1 (배선) shows from the card's arrival
+  let from = bt(4), cur = 1;
+  for (const c of crossings) { X.stageWin.push({ s: cur, a: from, b: c.t }); from = c.t; cur = c.s; }
+  X.stageWin.push({ s: cur, a: from, b: bt(8) });
+  X.fullAt = crossings.length ? crossings[crossings.length - 1].t : r1;
+
+  T_MAX = r2;
+  for (let t = g2; t <= r2; t += 0.001) if (slideRaw(t) >= 1) { T_MAX = t; break; }
+
+  // tooltip: while the cursor is inside the plot it snaps to the nearest hour
+  HOVER = null;
+  const snaps = [];
+  for (let t = bt(17.6); t <= bt(20); t += 0.001) {
+    const inside = isInside(t);
+    if (inside && !HOVER) HOVER = { a: t, b: bt(20) };
+    if (!inside && HOVER && HOVER.b === bt(20)) { HOVER.b = t; break; }
+    if (inside) {
+      const n = Math.round(clamp((CUR.x.at(t) - hx(0)) / 23, 0, 24));
+      if (!snaps.length || snaps[snaps.length - 1].n !== n) snaps.push({ t, n });
+    }
+  }
+  const toB = (t) => (t - OFFSET) / BEAT;
+  X.snaps = snaps;
+  X.hoverH = new Track([{ b: 17, v: snaps.length ? snaps[0].n : 14 }, ...snaps.map((o) => ({ b: toB(o.t), v: o.n }))], 30, 0.86);
+
+  // Sound cues (seconds). Each sound's measured peak is placed on its cue.
+  const c = (b, type, g = 1) => ({ t: mod(bt(b), T), type, g });
+  CUES = [
+    c(0, 'click'), c(1, 'shrink'), c(2, 'success'), c(3, 'morph'), c(4, 'click'), c(4, 'morph', 0.7), c(5, 'power'),
+    c(6, 'grab'), ...crossings.map((o) => ({ t: o.t, type: o.s === 4 ? 'complete' : 'tick', g: 1 })), c(7, 'release'),
+    c(8, 'morph'), c(8.5, 'grab'), { t: T_MAX, type: 'thud', g: 1 }, c(10, 'stretch'), c(10, 'snap'),
+    c(11, 'morph'), c(12, 'switch'), c(13, 'morph'), c(14, 'tab'), c(15, 'tab'), c(16, 'tab'),
+    c(17, 'morph'), c(18, 'draw'), ...(HOVER ? [{ t: HOVER.a, type: 'tick', g: 0.6 }] : []), c(19, 'tick', 0.8),
+    c(19.8, 'key', 0.7), c(20, 'key'), c(20, 'morph', 0.8),
+    ...TYPED.map(([b]) => c(b, 'type')), c(22, 'filter'), c(23, 'key'), c(24, 'enter'),
+    c(25, 'toast'), c(26, 'tick', 0.7), c(27, 'morph'),
+  ].sort((a, b) => a.t - b.t);
+  window.CUES = CUES;
+  return { T, BEAT, OFFSET, cues: CUES.length };
+}
+
+// press-and-release around a click at beat b: down 70 ms before, up 30 ms after
+function pressKeys(beats, depth) {
+  const out = [];
+  for (const b of beats) { out.push({ b: b - 0.07 / BEAT, v: depth }); out.push({ b: b + 0.03 / BEAT, v: 1 }); }
+  return out;
+}
+function clickKeys(beats) {
+  const out = [];
+  for (const b of beats) { out.push({ b: b - 0.07 / BEAT, v: 1 }); out.push({ b: b + 0.03 / BEAT, v: 0 }); }
+  return out;
+}
+const stageOf = (v) => (v >= 0.999 ? 4 : v >= 0.75 ? 3 : v >= 0.5 ? 2 : v >= 0.25 ? 1 : 0);
+function scrubV(t) {
+  if (t < SCRUB_X.g) return 0.4;
+  const tt = Math.min(t, SCRUB_X.r);
+  return clamp(0.4 + (CUR.x.at(tt) - SCRUB_X.x0) / 456, 0, 1);
+}
+function slideRaw(t) {
+  if (t < SLIDE_X.g) return 0.6;
+  return 0.6 + (CUR.x.at(Math.min(t, SLIDE_X.r)) - SLIDE_X.x0) / 560;
+}
+const rubber = (raw) => { const e = Math.max(0, raw - 1) * 560; return 70 * (1 - Math.exp(-e / 70)); };
+function sliderState(t) {
+  if (t < SLIDE_X.g || t > bt(11.5)) return { v: t < SLIDE_X.g ? 0.6 : 1, s: 0 };
+  const raw = slideRaw(t), v = clamp(raw, 0, 1);
+  if (t <= SLIDE_X.r) return { v, s: rubber(raw) };
+  return { v, s: release(t - SLIDE_X.r, SLIDE_X.s0, SLIDE_X.v0, 15, 0.76) };
+}
+function isInside(t) {
+  const x = CUR.x.at(t), y = CUR.y.at(t);
+  return x > hx(0) && x < hx(24) && y > 420 && y < 660;
+}
+
+/* ---- render one moment -------------------------------------------------- */
+function seek(tIn) {
+  const t = mod(tIn, T);
+
+  // shape
+  const sl = sliderState(t);
+  const cx = G.cx.at(t) + sl.s / 2, cy = G.cy.at(t);
+  const w = G.w.at(t) + sl.s, h = G.h.at(t) - sl.s * 0.16;
+  const r = Math.min(G.r.at(t), w / 2, h / 2);
+  const ox = cx - w / 2, oy = cy - h / 2;
+  const sh = E.shape.style;
+  sh.left = `${ox}px`; sh.top = `${oy}px`; sh.width = `${w}px`; sh.height = `${h}px`;
+  sh.borderRadius = `${r}px`; sh.background = rgb(G.bg.at(t)); sh.transform = `scale(${G.press.at(t).toFixed(4)})`;
+
+  // camera
+  const cs = CAM.s.at(t), ccx = CAM.x.at(t), ccy = CAM.y.at(t);
+  E.world.style.transform = `translate(${(720 - ccx * cs).toFixed(3)}px,${(720 - ccy * cs).toFixed(3)}px) scale(${cs.toFixed(5)})`;
+
+  const P = (el, gx, gy, gw, gh) => { el.style.left = `${gx - gw / 2 - ox}px`; el.style.top = `${gy - gh / 2 - oy}px`; };
+
+  // 0 · button
+  P(E.Lbtn, 0, 0, 400, 96);
+  show(E.Lbtn, env(t, 27, 0, { di: 0.1, dx: 0.1 }));
+  E.btnArrow.style.transform = `translateX(${A.arrow.at(t).toFixed(2)}px)`;
+
+  // 1 · loader
+  P(E.Lspin, 0, 0, 48, 48);
+  if (show(E.Lspin, env(t, 0, 2, { di: 0.06, dx: 0.1 }), { sIn: 0.6 })) E.spin.style.transform = `rotate(${((t - bt(0)) * 520).toFixed(2)}deg)`;
+
+  // 2 · puck (check → avatar)
+  const ps = PK.s.at(t);
+  if (ps > 0.5) {
+    const pp = E.puck.style, px = PK.x.at(t), py = PK.y.at(t);
+    pp.visibility = 'inherit'; pp.left = `${px - ps / 2 - ox}px`; pp.top = `${py - ps / 2 - oy}px`; pp.width = pp.height = `${ps}px`;
+    const is = ps * 0.46, io = (ps - is) / 2;
+    for (const s of [E.pkCheck, E.pkBolt]) { s.style.left = s.style.top = `${io}px`; s.setAttribute('width', is); s.setAttribute('height', is); }
+    show(E.pkCheck, env(t, 2, 3, { di: 0, du: 0.01, dx: 0.1 }), { sIn: 1 });
+    E.pkCheckP.style.strokeDashoffset = E.checkLen * (1 - easeOut3(clamp01((t - bt(2) - 0.06) / 0.3)));
+    show(E.pkBolt, env(t, 3, 8, { di: 0.1, dx: 0.1 }), { sIn: 0.7 });
+  } else E.puck.style.visibility = 'hidden';
+
+  // 3 · dynamic island
+  P(E.Lisl, 0, 0, 460, 88);
+  if (show(E.Lisl, env(t, 3, 4, { di: 0.1, dx: 0.1 }))) {
+    let d = '';
+    for (let i = 0; i <= 40; i++) {
+      const x = i * 2, taper = Math.sin((i / 40) * Math.PI);
+      d += `${i ? 'L' : 'M'}${x} ${(18 + 11 * taper * Math.sin(x / 80 * Math.PI * 4 - t * 11)).toFixed(2)}`;
+    }
+    E.wave.setAttribute('d', d);
+  }
+
+  // 4 · panel card
+  P(E.Lcard, 0, 126, 520, 340);
+  if (show(E.Lcard, env(t, 4, 8, { di: 0.12, du: 0.3, dx: 0.12 }))) {
+    E.chip.style.background = rgb(A.chipBg.at(t));
+    show(E.chipOff, env(t, 4, 5, { di: 0, du: 0.01, dx: 0.08 }), { sIn: 1 });
+    show(E.chipOn, env(t, 5, 8, { di: 0.04, du: 0.16 }), { sIn: 0.9 });
+    E.pwr.style.background = rgb(A.pwrBg.at(t));
+    E.pwr.style.transform = `scale(${A.pwrPress.at(t).toFixed(4)})`;
+    const p = A.pwrP.at(t), pc = clamp01(p);
+    const arc = ARC_PTS.map((a, i) => [lerp(a[0], BOLT_PTS[i][0], p), lerp(a[1], BOLT_PTS[i][1], p)]);
+    const rot = Math.sin(Math.PI * pc) * -14;
+    E.pwrArc.setAttribute('d', 'M' + arc.map((q) => `${q[0].toFixed(3)} ${q[1].toFixed(3)}`).join('L'));
+    E.pwrArc.setAttribute('transform', `rotate(${rot.toFixed(2)} 12 12)`);
+    E.pwrArc.setAttribute('stroke-width', (STROKE * 24 / 44).toFixed(3));
+    const ly0 = lerp(3, 2, pc), ly1 = lerp(12, 2, pc);
+    E.pwrLine.setAttribute('d', `M${lerp(12, 13.5, pc).toFixed(3)} ${ly0.toFixed(3)}L${lerp(12, 13.5, pc).toFixed(3)} ${ly1.toFixed(3)}`);
+    E.pwrLine.setAttribute('stroke-width', (STROKE * 24 / 44).toFixed(3));
+    E.pwrLine.style.opacity = (1 - smooth(clamp01(pc * 1.6))).toFixed(3);
+    E.volt.textContent = Math.round(clamp(A.volt.at(t), 0, 999));
+    const v = scrubV(t);
+    E.fill.style.width = `${v * 456}px`;
+    E.fill.style.background = t >= X.fullAt && t < bt(9) ? rgb(lerpC(PAPER, YEL, smooth(clamp01((t - X.fullAt) / 0.12)))) : '#fff';
+    E.handle.style.left = `${v * 456 - 13}px`;
+    E.handle.style.transform = `scale(${A.grab.at(t).toFixed(4)})`;
+    E.pct.textContent = `${Math.round(v * 100)}%`;
+    for (const el of E.stages) el.style.visibility = 'hidden';
+    for (const w of X.stageWin) {
+      const tin = (w.a - OFFSET) / BEAT, tout = (w.b - OFFSET) / BEAT;
+      show(E.stages[w.s], env(t, tin, tout, { di: 0.02, du: 0.14, dx: 0.06 }), { sIn: 1, dy: 6, dyOut: 6, blur: 5 });
+    }
+  }
+
+  // 5 · brightness slider (lives on the shape's actual rect, stretch included)
+  if (show(E.Lsl, env(t, 8, 11, { di: 0.02, du: 0.2, dx: 0.1 }), { sIn: 1 })) {
+    const L = E.Lsl.style; L.left = '0px'; L.top = '0px'; L.width = `${w}px`; L.height = `${h}px`;
+    const f = Math.max(h, sl.v * w);
+    const fs = E.slFill.style; fs.width = `${f}px`; fs.height = `${h}px`; fs.borderRadius = `${h / 2}px`;
+    E.slL.style.clipPath = `inset(0 ${Math.max(0, w - f).toFixed(2)}px 0 0)`;
+    const txt = `${Math.round(sl.v * 100)}%`;
+    for (const el of E.slVals) el.textContent = txt;
+    E.bulbGlass.setAttribute('fill-opacity', t >= T_MAX ? smooth(clamp01((t - T_MAX) / 0.1)).toFixed(3) : '0');
+  }
+
+  // 6 · knob (toggle knob → tab indicator → palette highlight → toast icon)
+  const kL = KN.L.at(t), kR = KN.R.at(t), kT = KN.T.at(t), kB = KN.B.at(t);
+  const kr = Math.min(KN.r.at(t), (kR - kL) / 2, (kB - kT) / 2);
+  const ke = env(t, 11, 27, { di: 0.1, du: 0.22, dx: 0.12 });
+  if (show(E.knob, ke, { sIn: 0.5, blur: 4 })) {
+    const ks = E.knob.style;
+    ks.left = `${kL - ox}px`; ks.top = `${kT - oy}px`; ks.width = `${kR - kL}px`; ks.height = `${kB - kT}px`;
+    ks.borderRadius = `${kr}px`; ks.background = rgb(KN.c.at(t));
+  }
+
+  // 7 · toggle — ON fills yellow behind the knob as it travels
+  if (show(E.wipe, env(t, 12 - 0.02, 13, { di: 0, du: 0.01, dx: 0.14 }), { sIn: 1, blur: 0 })) {
+    const ws = E.wipe.style;
+    ws.left = '0px'; ws.top = '0px'; ws.height = `${h}px`; ws.borderRadius = `${h / 2}px`;
+    ws.width = `${clamp(kR + 10 - ox, h, w)}px`;
+  }
+  P(E.Ltg, 0, 244, 320, 104);
+  if (show(E.Ltg, env(t, 11, 13, { di: 0.12, dx: 0.1 }), { sIn: 1 })) {
+    show(E.tgOff, env(t, 11, 12, { di: 0.12, dx: 0.08 }));
+    show(E.tgOn, env(t, 12, 13, { di: 0.1, dx: 0.1 }));
+  }
+
+  // 8 · tabs — labels invert exactly where the liquid indicator covers them
+  P(E.Ltabs, 0, 244, 616, 88);
+  if (show(E.Ltabs, env(t, 13, 20, { di: 0.05, dx: 0.1 }), { sIn: 1, sOut: 1 })) {
+    const lx = -308, ly = 200;
+    E.tabsL.style.clipPath = `inset(${(kT - ly).toFixed(2)}px ${(616 - (kR - lx)).toFixed(2)}px ${(88 - (kB - ly)).toFixed(2)}px ${(kL - lx).toFixed(2)}px round ${kr.toFixed(2)}px)`;
+    E.tabsL.style.opacity = ke.a.toFixed(4);
+    E.tabsL.style.background = rgb(KN.c.at(t));
+    for (let i = 0; i < 4; i++) {
+      const e = env(t, 13 + i * 0.07, 20, { di: 0.08, du: 0.22, dx: 0.1 });
+      const ps = i > 0 ? A.tabPress[i - 1].at(t) : 1;
+      for (const el of [E.tabD[i], E.tabL[i]]) show(el, e, { sIn: 0.9, base: '', blur: 6 }) && (el.style.transform += ` scale(${ps.toFixed(4)})`);
+    }
+  }
+
+  // 9 · chart
+  P(E.Lch, 0, 450, 616, 500);
+  if (show(E.Lch, env(t, 17, 20, { di: 0.12, du: 0.3, dx: 0.12 }), { sIn: 0.98 })) {
+    const p = easeInOut3(clamp01((t - bt(17.2)) / (bt(18) - bt(17.2))));
+    const hd = 24 * p, xd = PX(hd);
+    E.clip.setAttribute('width', xd.toFixed(2));
+    const penOn = p > 0.001 && p < 0.999;
+    E.pen.setAttribute('cx', xd.toFixed(2)); E.pen.setAttribute('cy', PY(loadAt(hd)).toFixed(2));
+    E.pen.style.opacity = penOn ? '1' : '0';
+    let mx = 0; for (let i = 0; i <= 48; i++) { const hh = (i / 48) * hd; mx = Math.max(mx, loadAt(hh)); }
+    E.chVal.textContent = mx.toFixed(1);
+    const pk = Math.max(0, A.peak.at(t));
+    E.peak.setAttribute('r', (8 * pk).toFixed(3)); E.peak.setAttribute('stroke-width', (3 * Math.min(1, pk)).toFixed(3));
+    E.peak.style.opacity = pk > 0.01 ? '1' : '0';
+    const he = HOVER ? env(t, (HOVER.a - OFFSET) / BEAT, (HOVER.b - OFFSET) / BEAT, { di: 0, du: 0.14, dx: 0.1 }) : { a: 0, e: 0, x: 1 };
+    const hh = X.hoverH.at(t), hxL = PX(hh), hyL = PY(loadAt(hh));
+    for (const el of [E.hvLine, E.hvDot]) el.style.opacity = he.a.toFixed(4);
+    E.hvLine.setAttribute('x1', hxL); E.hvLine.setAttribute('x2', hxL);
+    E.hvDot.setAttribute('cx', hxL); E.hvDot.setAttribute('cy', hyL);
+    E.tip.style.left = `${hxL}px`; E.tip.style.top = `${hyL - 20}px`;
+    if (show(E.tip, he, { base: 'translate(-50%,-100%)', sIn: 0.9, dy: 6, blur: 5 })) {
+      let n = X.snaps.length ? X.snaps[0].n : 14;
+      for (const o of X.snaps) if (t >= o.t) n = o.n;
+      E.tip.textContent = `${String(n).padStart(2, '0')}:00 · ${LOAD[n].toFixed(1)} A`;
+    }
+  }
+
+  // 10 · ⌘K palette
+  P(E.Lpal, 0, 396.5, 600, 393);
+  if (show(E.Lpal, env(t, 20, 25, { di: 0.1, dx: 0.1 }), { sIn: 1, sOut: 1 })) {
+    let typed = '', last = -1;
+    for (const [b, s] of TYPED) if (t >= bt(b) && t < bt(25.5)) { typed = s; last = bt(b); }
+    E.qPh.style.opacity = t < bt(21) ? '1' : '0';
+    E.qTx.textContent = typed;
+    const since = last < 0 ? t - bt(20) : t - last;
+    E.caret.style.opacity = since < 0.45 || mod(since - 0.45, 1) < 0.5 ? '1' : '0';
+    const lx = -300, ly = 200;
+    E.rowsL.style.clipPath = `inset(${(kT - ly).toFixed(2)}px ${(600 - (kR - lx)).toFixed(2)}px ${(393 - (kB - ly)).toFixed(2)}px ${(kL - lx).toFixed(2)}px round ${kr.toFixed(2)}px)`;
+    E.rowsL.style.color = rgb(A.inv.at(t));
+    E.rowsL.style.background = rgb(KN.c.at(t));
+    const rest = rgb(A.rest.at(t));
+    for (let i = 0; i < ROWS.length; i++) {
+      const keep = i === 1 || i === 3;
+      const e = env(t, 20 + (0.04 * i) / BEAT, keep ? 25 : 22, { di: 0.1, du: 0.22, dx: 0.12 });
+      const y = 85 + 60 * A.rowSlot[i].at(t);
+      for (const el of [E.rowD[i], E.rowL[i]]) { el.style.top = `${y}px`; show(el, e, { sIn: 0.97, dy: 8, blur: 6 }); }
+      if (keep) E.rRest[i].style.color = rest;
+    }
+  }
+
+  // 11 · toast
+  P(E.Ltoast, 0, 252, 580, 104);
+  if (show(E.Ltoast, env(t, 25, 27, { di: 0.1, dx: 0.1 }))) {
+    E.tCheck.style.strokeDashoffset = E.checkLen * (1 - easeOut3(clamp01((t - bt(25) - 0.14) / 0.28)));
+    show(E.tSub1, env(t, 25, 26, { di: 0.12, dx: 0.1 }), { sIn: 1, dy: 6, dyOut: 6, blur: 5 });
+    show(E.tSub2, env(t, 26, 27, { di: 0.08, dx: 0.1 }), { sIn: 1, dy: 6, blur: 5 });
+    const rp = smooth(clamp01((t - bt(25.3)) / (bt(27) - bt(25.3))));
+    E.tArc.setAttribute('stroke-dashoffset', (2 * Math.PI * 11 * (1 - rp)).toFixed(3));
+  }
+
+  // keycaps (screen space)
+  keycap(E.kcCmd, 664, env(t, 19.5, 20.6, { di: 0, du: 0.18, dx: 0.14 }), A.kcCmd.at(t));
+  keycap(E.kcK, 776, env(t, 19.56, 20.6, { di: 0, du: 0.18, dx: 0.14 }), A.kcK.at(t));
+  if (keycap(E.kcX, 720, env(t, 22.5, 24.6, { di: 0, du: 0.18, dx: 0.14 }), A.kcX.at(t))) {
+    show(E.kcDown, env(t, 22.5, 23.55, { di: 0, du: 0.01, dx: 0.08 }), { sIn: 1, blur: 5 });
+    show(E.kcEnter, env(t, 23.55, 24.6, { di: 0.04, du: 0.16, dx: 0.1 }), { sIn: 0.85, blur: 5 });
+    for (const el of [E.kcDown, E.kcEnter]) { el.style.left = '28px'; el.style.top = '28px'; }
+  }
+
+  // cursor (screen space, tip on the world point)
+  const sx = 720 + (CUR.x.at(t) - ccx) * cs, sy = 720 + (CUR.y.at(t) - ccy) * cs;
+  const cp = lerp(1, 0.86, clamp01(CUR.press.at(t)));
+  E.cursor.style.transform = `translate(${(sx - 5.4).toFixed(2)}px,${(sy - 4.05).toFixed(2)}px) translate(5.4px,4.05px) scale(${cp.toFixed(4)}) translate(-5.4px,-4.05px)`;
+}
+const lerpC = (a, b, p) => [lerp(a[0], b[0], p), lerp(a[1], b[1], p), lerp(a[2], b[2], p)];
+function keycap(el, x, e, press) {
+  const s = el.style;
+  s.left = `${x - 48}px`; s.top = `${1296 - 48}px`;
+  const ok = show(el, e, { sIn: 0.9, dy: 18, dyOut: -10, blur: 6 });
+  if (ok) {
+    const p = clamp01(press);
+    s.transform += ` translateY(${(p * 5).toFixed(2)}px)`;
+    s.boxShadow = `0 ${(6 - 5 * p).toFixed(2)}px 0 #D3CEC6, 0 ${(16 - 8 * p).toFixed(1)}px 30px -10px rgba(30,24,14,.32)`;
+  }
+  return ok;
+}
+
+/* ---- boot ---------------------------------------------------------------- */
+buildDom();
+build();
+window.seek = seek;
+window.init = (o) => build(o);
+window.META = () => ({ T, BEAT, OFFSET, BEATS });
+window.ready = document.fonts.load('650 20px Pretendard').then(() => document.fonts.ready).then(() => true);
+
+// Live preview when opened directly: ?t=3.2 freezes a moment, otherwise it plays (click for sound).
+const qs = new URLSearchParams(location.search);
+if (qs.has('t')) seek(+qs.get('t'));
+else if (!qs.has('render')) {
+  const audio = new Audio('audio/soundtrack.m4a'); audio.loop = true;
+  let t0 = performance.now();
+  document.addEventListener('click', () => { audio.currentTime = 0; audio.play(); t0 = null; });
+  const loop = (now) => { seek(t0 === null ? audio.currentTime : (now - t0) / 1000); requestAnimationFrame(loop); };
+  requestAnimationFrame(loop);
+} else seek(0);
+</script>
+</body>
+</html>

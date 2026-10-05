@@ -4,3 +4,7 @@ showreel/out-preview/
 showreel/node_modules/
 showreel/audio/*.wav
 __pycache__/
+goryeo/out/
+goryeo/node_modules/
+goryeo/package-lock.json
+goryeo/audio/*.wav

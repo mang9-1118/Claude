@@ -1,5 +1,7 @@
 # SHOWREEL 2026 — Claude, Motion Designer
 
+> **New:** [**고려전장 — UI 모션그래픽**](goryeo/README.md) · [`goryeo.mp4`](goryeo.mp4) · one shape morphing through twelve UI states on a 120 BPM grid, introducing a master-electrician business.
+
 ![Storyboard: one frame from each of the eight sections](showreel/docs/storyboard.jpg)
 
 **▶ [`showreel.mp4`](showreel.mp4)** · 15 s · 1920×1080 · 60 fps · H.264 + AAC · original beat-synced soundtrack
