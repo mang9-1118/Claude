@@ -1,0 +1,16 @@
+{
+  "name": "showreel-2026",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A 15-second, beat-synced motion design showreel rendered entirely in code.",
+  "type": "module",
+  "scripts": {
+    "audio": "python3 audio/soundtrack.py audio/soundtrack.wav",
+    "preview": "node render.mjs --samples 1 --out out-preview --no-encode",
+    "render": "npm run audio && node render.mjs",
+    "encode": "node render.mjs --encode-only"
+  },
+  "devDependencies": {
+    "playwright": "1.56.1"
+  }
+}

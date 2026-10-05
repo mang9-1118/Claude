@@ -1,0 +1,6 @@
+# render intermediates
+showreel/out/
+showreel/out-preview/
+showreel/node_modules/
+showreel/audio/*.wav
+__pycache__/
